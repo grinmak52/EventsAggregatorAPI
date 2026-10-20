@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, PostgresDsn, model_validator
+from pydantic import BaseModel, Field, PostgresDsn, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -60,6 +60,12 @@ class PostgresEnv(BaseSettings):
         return PostgresDsn(url.render_as_string(hide_password=False))
 
 
+class EventsProviderConfig(BaseModel):
+    base_url: str
+    api_key: SecretStr
+    timeout: float = 10.0
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(
@@ -73,6 +79,7 @@ class Settings(BaseSettings):
     run: RunConfig = RunConfig()
     api: ApiPrefix = ApiPrefix()
     db: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    events_provider: EventsProviderConfig
 
     @model_validator(mode="after")
     def fill_db_url(self) -> Settings:
