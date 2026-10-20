@@ -66,6 +66,11 @@ class EventsProviderConfig(BaseModel):
     timeout: float = 10.0
 
 
+class SyncConfig(BaseModel):
+    enabled: bool = True
+    interval_hours: float = 24
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(
@@ -80,6 +85,8 @@ class Settings(BaseSettings):
     api: ApiPrefix = ApiPrefix()
     db: DatabaseConfig = Field(default_factory=DatabaseConfig)
     events_provider: EventsProviderConfig
+    sync: SyncConfig = Field(default_factory=SyncConfig)
+    log_level: str = "INFO"
 
     @model_validator(mode="after")
     def fill_db_url(self) -> Settings:

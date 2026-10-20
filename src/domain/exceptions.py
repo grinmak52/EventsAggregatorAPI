@@ -20,3 +20,7 @@ class ProviderUnavailableError(ProviderError):
 
 class ProviderResponseError(ProviderError):
     """Ответ Provider не соответствует ожидаемому формату."""
+
+
+class SyncAlreadyRunningError(Exception):
+    """Синхронизация уже выполняется."""
