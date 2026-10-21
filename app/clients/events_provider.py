@@ -1,4 +1,3 @@
-from collections.abc import AsyncIterator
 from datetime import date
 
 import httpx
@@ -35,16 +34,12 @@ class EventsProviderClient:
             raise ProviderError(f"Ошибка сети: {type(e).__name__}") from e
         return response.json()
 
-    async def iter_events(self, changed_at: date) -> AsyncIterator[dict]:
-        """Отдаёт мероприятия по одному, проходя все страницы по `next`."""
-        url: str | None = "/api/events/"
-        params: dict | None = {"changed_at": changed_at.isoformat()}
-        while url:
-            data = await self._request("GET", url, params=params)
-            for event in data["results"]:
-                yield event
-            url = data.get("next")
-            params = None  # в `next` параметры уже есть
+    async def events(self, changed_at: date, cursor: str | None = None) -> dict:
+        if cursor:
+            return await self._request("GET", cursor)
+        return await self._request(
+            "GET", "/api/events/", params={"changed_at": changed_at.isoformat()}
+        )
 
     async def get_seats(self, event_id: str) -> dict:
         return await self._request("GET", f"/api/events/{event_id}/seats/")

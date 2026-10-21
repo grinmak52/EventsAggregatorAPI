@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.clients.events_provider import EventsProviderClient
+from app.clients.paginator import EventsPaginator
 from app.db.models import Event, Place, SyncMetadata
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,6 @@ async def run_sync(
         return False
 
     async with _lock:
-        # 1. Помечаем, что синхронизация началась, и считаем дату старта
         async with session_factory() as session:
             meta = await _get_metadata(session)
             if meta.last_changed_at is None:
@@ -88,7 +88,7 @@ async def run_sync(
             async with session_factory() as session:
                 count = 0
                 max_changed = None
-                async for item in client.iter_events(since):
+                async for item in EventsPaginator(client, since):
                     event_values = _event_values(item)
                     await _upsert(session, Place, _place_values(item["place"]))
                     await _upsert(session, Event, event_values)
