@@ -13,7 +13,6 @@ class Settings(BaseSettings):
     provider_api_key: str = ""
     sync_interval_seconds: int = 24 * 60 * 60
 
-    # так LMS передаёт БД в контейнер
     postgres_host: str | None = None
     postgres_port: int = 5432
     postgres_username: str = ""
