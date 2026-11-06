@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     idempotency_ttl_seconds: int = 86400  # сутки
     idempotency_cleanup_interval_seconds: int = 3600
 
+    sentry_dsn: str = (
+        "http://7cd7247365124979b5f0d5a8b4c53bc0@glitchtip-web.glitchtip.svc/68"
+    )
+
     postgres_host: str | None = None
     postgres_port: int = 5432
     postgres_username: str = ""
