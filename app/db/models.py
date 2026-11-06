@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, func
+from sqlalchemy import DateTime, ForeignKey, func, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.db.base import Base
 
@@ -56,3 +57,23 @@ class SyncMetadata(Base):
     sync_status: Mapped[str] = mapped_column(default="idle")
     last_sync_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class OutboxMessage(Base):
+    __tablename__ = "outbox"
+    __table_args__ = (
+        Index(
+            "ix_outbox_pending",
+            "created_at",
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    event_type: Mapped[str]
+    payload: Mapped[dict] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(default="pending")
+    attempts: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
