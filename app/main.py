@@ -74,8 +74,6 @@ if settings.sentry_dsn:
     )
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
-
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(api.router)
 
 
