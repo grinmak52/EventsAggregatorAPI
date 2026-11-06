@@ -9,6 +9,7 @@ from app.db.models import Ticket
 from app.repositories.events import EventRepository
 from app.repositories.outbox import OutboxRepository
 from app.repositories.tickets import TicketRepository
+from app.repositories.idempotency import IdempotencyRepository
 from app.schemas.tickets import TicketCreate
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,15 @@ def _provider_error(e: ProviderError) -> TicketError:
         return TicketError(409, "Events provider rejected the request")
     return TicketError(502, "Events provider error")
 
+def _same_request(ticket: Ticket, data: TicketCreate) -> bool:
+    return (
+        str(ticket.event_id) == str(data.event_id)
+        and ticket.first_name == data.first_name
+        and ticket.last_name == data.last_name
+        and ticket.email == data.email
+        and ticket.seat == data.seat
+    )
+
 
 class TicketService:
     def __init__(self, session: AsyncSession, client: EventsProviderClient):
@@ -33,9 +43,21 @@ class TicketService:
         self._events = EventRepository(session)
         self._tickets = TicketRepository(session)
         self._outbox = OutboxRepository(session)
+        self._keys = IdempotencyRepository(session)
         self._client = client
 
     async def create(self, data: TicketCreate) -> Ticket:
+        if data.idempotency_key:
+            saved = await self._keys.get(data.idempotency_key)
+            if saved is not None:
+                ticket = await self._tickets.get(saved.ticket_id)
+                if not _same_request(ticket, data):
+                    raise TicketError(
+                        409, "Idempotency key already used with different data"
+                    )
+                logger.info("Повторный запрос, ticket_id=%s", ticket.id)
+                return ticket
+
         event = await self._events.get(data.event_id)
         if event is None:
             raise TicketError(404, "Event not found")
@@ -65,7 +87,9 @@ class TicketService:
             "ticket_created",
             {"ticket_id": str(ticket.id), "event_name": event.name},
         )
-        await self._session.commit()  # билет и outbox: либо оба, либо ни один
+        if data.idempotency_key:
+            await self._keys.add(data.idempotency_key, ticket.id)
+        await self._session.commit()
 
         logger.info("Билет создан, ticket_id=%s", ticket.id)
         return ticket
