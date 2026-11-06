@@ -12,10 +12,10 @@ from app.clients.capashino import CapashinoClient
 from app.clients.events_provider import EventsProviderClient
 from app.core.config import settings
 from app.db.session import SessionLocal, engine
+from app.services.idempotency import cleanup_loop
 from app.services.outbox import outbox_loop
 from app.services.seats import SeatsService
 from app.services.sync import sync_loop
-from app.services.idempotency import cleanup_loop
 
 logging.basicConfig(level=logging.INFO)
 

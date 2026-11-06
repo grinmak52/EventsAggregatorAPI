@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.events_provider import EventsProviderClient, ProviderError
 from app.db.models import Ticket
 from app.repositories.events import EventRepository
+from app.repositories.idempotency import IdempotencyRepository
 from app.repositories.outbox import OutboxRepository
 from app.repositories.tickets import TicketRepository
-from app.repositories.idempotency import IdempotencyRepository
 from app.schemas.tickets import TicketCreate
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ def _provider_error(e: ProviderError) -> TicketError:
     if e.status_code is not None and 400 <= e.status_code < 500:
         return TicketError(409, "Events provider rejected the request")
     return TicketError(502, "Events provider error")
+
 
 def _same_request(ticket: Ticket, data: TicketCreate) -> bool:
     return (
