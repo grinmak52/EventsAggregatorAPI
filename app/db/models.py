@@ -72,7 +72,7 @@ class OutboxMessage(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     event_type: Mapped[str]
     payload: Mapped[dict] = mapped_column(JSONB)
-    status: Mapped[str] = mapped_column(default="pending")
+    status: Mapped[str] = mapped_column(default="pending")  # pending / sent / failed
     attempts: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

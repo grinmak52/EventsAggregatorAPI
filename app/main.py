@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal, engine
 from app.services.seats import SeatsService
 from app.services.sync import sync_loop
+from app.services.outbox import outbox_loop
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,11 +32,22 @@ async def lifespan(app: FastAPI):
             settings.sync_interval_seconds,
         )
     )
+    outbox_task = asyncio.create_task(
+        outbox_loop(
+            SessionLocal,
+            settings.outbox_interval_seconds,
+            settings.outbox_batch_size,
+            settings.outbox_max_attempts,
+        )
+    )
     yield
 
     sync_task.cancel()
+    outbox_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await sync_task
+    with contextlib.suppress(asyncio.CancelledError):
+        await outbox_task
     await app.state.provider_client.close()
     await engine.dispose()
 
