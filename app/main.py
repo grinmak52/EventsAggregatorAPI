@@ -83,8 +83,3 @@ app.include_router(api.router)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
     errors = [{"loc": e["loc"], "msg": e["msg"]} for e in exc.errors()]
     return JSONResponse(status_code=400, content={"detail": errors})
-
-
-@app.get("/api/debug/error")  # временно, потом удалить
-async def debug_error():
-    raise RuntimeError("GlitchTip test error")
