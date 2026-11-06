@@ -1,8 +1,10 @@
 import asyncio
 import contextlib
 import logging
+import sentry_sdk
 from contextlib import asynccontextmanager
 
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -64,6 +66,13 @@ async def lifespan(app: FastAPI):
     await app.state.capashino_client.close()
     await engine.dispose()
 
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[FastApiIntegration()],
+    )
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(api.router)
@@ -73,3 +82,8 @@ app.include_router(api.router)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
     errors = [{"loc": e["loc"], "msg": e["msg"]} for e in exc.errors()]
     return JSONResponse(status_code=400, content={"detail": errors})
+
+
+@app.get("/api/debug/error")  # временно, потом удалить
+async def debug_error():
+    raise RuntimeError("GlitchTip test error")
