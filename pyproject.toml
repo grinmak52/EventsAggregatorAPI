@@ -10,7 +10,6 @@ dependencies = [
     "email-validator>=2.3.0",
     "fastapi>=0.156.4",
     "httpx>=0.28.1",
-    "httpx2>=2.15.1",
     "pydantic-settings>=2.16.1",
     "sentry-sdk[fastapi]>=2.74.0",
     "sqlalchemy[asyncio]>=2.1.5",
