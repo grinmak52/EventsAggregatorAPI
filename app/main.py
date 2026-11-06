@@ -15,6 +15,7 @@ from app.db.session import SessionLocal, engine
 from app.services.outbox import outbox_loop
 from app.services.seats import SeatsService
 from app.services.sync import sync_loop
+from app.services.idempotency import cleanup_loop
 
 logging.basicConfig(level=logging.INFO)
 
@@ -45,14 +46,20 @@ async def lifespan(app: FastAPI):
             settings.outbox_max_attempts,
         )
     )
+    cleanup_task = asyncio.create_task(
+        cleanup_loop(
+            SessionLocal,
+            settings.idempotency_ttl_seconds,
+            settings.idempotency_cleanup_interval_seconds,
+        )
+    )
     yield
-
-    sync_task.cancel()
-    outbox_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await sync_task
-    with contextlib.suppress(asyncio.CancelledError):
-        await outbox_task
+    tasks = [sync_task, outbox_task, cleanup_task]
+    for task in tasks:
+        task.cancel()
+    for task in tasks:
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
     await app.state.provider_client.close()
     await app.state.capashino_client.close()
     await engine.dispose()

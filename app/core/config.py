@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     outbox_batch_size: int = 10
     outbox_max_attempts: int = 5
 
+    idempotency_ttl_seconds: int = 86400  # сутки
+    idempotency_cleanup_interval_seconds: int = 3600
+
     postgres_host: str | None = None
     postgres_port: int = 5432
     postgres_username: str = ""
