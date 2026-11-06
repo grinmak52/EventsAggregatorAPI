@@ -8,12 +8,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app import api
+from app.clients.capashino import CapashinoClient
 from app.clients.events_provider import EventsProviderClient
 from app.core.config import settings
 from app.db.session import SessionLocal, engine
+from app.services.outbox import outbox_loop
 from app.services.seats import SeatsService
 from app.services.sync import sync_loop
-from app.services.outbox import outbox_loop
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,6 +25,9 @@ async def lifespan(app: FastAPI):
         settings.provider_url, settings.provider_api_key
     )
     app.state.seats_service = SeatsService(app.state.provider_client)
+    app.state.capashino_client = CapashinoClient(
+        settings.capashino_url, settings.capashino_api_key
+    )
 
     sync_task = asyncio.create_task(
         sync_loop(
@@ -35,6 +39,7 @@ async def lifespan(app: FastAPI):
     outbox_task = asyncio.create_task(
         outbox_loop(
             SessionLocal,
+            app.state.capashino_client,
             settings.outbox_interval_seconds,
             settings.outbox_batch_size,
             settings.outbox_max_attempts,
@@ -49,6 +54,7 @@ async def lifespan(app: FastAPI):
     with contextlib.suppress(asyncio.CancelledError):
         await outbox_task
     await app.state.provider_client.close()
+    await app.state.capashino_client.close()
     await engine.dispose()
 
 

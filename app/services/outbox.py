@@ -4,17 +4,36 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.clients.capashino import CapashinoClient, CapashinoError
 from app.db.models import OutboxMessage
 
 logger = logging.getLogger(__name__)
 
 
-async def _send(message: OutboxMessage) -> None:
-    logger.info("Отправка (заглушка): %s %s", message.event_type, message.payload)
+async def _send(message: OutboxMessage, client: CapashinoClient) -> None:
+    if message.event_type != "ticket_created":
+        raise ValueError(f"Неизвестный тип события: {message.event_type}")
+
+    payload = message.payload
+    try:
+        result = await client.create_notification(
+            message=(
+                f"Вы успешно зарегистрированы на мероприятие - {payload['event_name']}"
+            ),
+            reference_id=payload["ticket_id"],
+            idempotency_key=str(message.id),
+        )
+    except CapashinoError as e:
+        if e.status_code == 409:
+            logger.info("Уведомление уже существует, outbox=%s", message.id)
+            return
+        raise
+    logger.info("Уведомление создано, outbox=%s, id=%s", message.id, result.get("id"))
 
 
 async def process_outbox(
     session_factory: async_sessionmaker[AsyncSession],
+    client: CapashinoClient,
     batch_size: int,
     max_attempts: int,
 ) -> None:
@@ -30,7 +49,7 @@ async def process_outbox(
 
         for message in messages:
             try:
-                await _send(message)
+                await _send(message, client)
                 message.status = "sent"
             except Exception:
                 message.attempts += 1
@@ -48,13 +67,14 @@ async def process_outbox(
 
 async def outbox_loop(
     session_factory: async_sessionmaker[AsyncSession],
+    client: CapashinoClient,
     interval: float,
     batch_size: int,
     max_attempts: int,
 ) -> None:
     while True:
         try:
-            await process_outbox(session_factory, batch_size, max_attempts)
+            await process_outbox(session_factory, client, batch_size, max_attempts)
         except Exception:
             logger.exception("Ошибка в воркере outbox")
         await asyncio.sleep(interval)

@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     provider_url: str = "https://events-provider.dev-2.python-labs.ru"
     provider_api_key: str = ""
     sync_interval_seconds: int = 24 * 60 * 60
+
+    capashino_url: str = "https://capashino.dev-2.python-labs.ru"
+    capashino_api_key: str = ""
+
     outbox_interval_seconds: int = 5
     outbox_batch_size: int = 10
     outbox_max_attempts: int = 5

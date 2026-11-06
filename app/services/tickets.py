@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.events_provider import EventsProviderClient, ProviderError
 from app.db.models import Ticket
 from app.repositories.events import EventRepository
-from app.repositories.tickets import TicketRepository
 from app.repositories.outbox import OutboxRepository
+from app.repositories.tickets import TicketRepository
 from app.schemas.tickets import TicketCreate
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ class TicketError(Exception):
         super().__init__(detail)
         self.status_code = status_code
         self.detail = detail
+
 
 def _provider_error(e: ProviderError) -> TicketError:
     if e.status_code is not None and 400 <= e.status_code < 500:
@@ -39,7 +40,7 @@ class TicketService:
         if event is None:
             raise TicketError(404, "Event not found")
         if event.status != "published" or event.registration_deadline <= datetime.now(
-                UTC
+            UTC
         ):
             raise TicketError(409, "Registration is closed")
 
