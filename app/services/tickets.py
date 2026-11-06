@@ -8,6 +8,7 @@ from app.clients.events_provider import EventsProviderClient, ProviderError
 from app.db.models import Ticket
 from app.repositories.events import EventRepository
 from app.repositories.tickets import TicketRepository
+from app.repositories.outbox import OutboxRepository
 from app.schemas.tickets import TicketCreate
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,6 @@ class TicketError(Exception):
         self.status_code = status_code
         self.detail = detail
 
-
 def _provider_error(e: ProviderError) -> TicketError:
     if e.status_code is not None and 400 <= e.status_code < 500:
         return TicketError(409, "Events provider rejected the request")
@@ -28,8 +28,10 @@ def _provider_error(e: ProviderError) -> TicketError:
 
 class TicketService:
     def __init__(self, session: AsyncSession, client: EventsProviderClient):
+        self._session = session
         self._events = EventRepository(session)
         self._tickets = TicketRepository(session)
+        self._outbox = OutboxRepository(session)
         self._client = client
 
     async def create(self, data: TicketCreate) -> Ticket:
@@ -37,7 +39,7 @@ class TicketService:
         if event is None:
             raise TicketError(404, "Event not found")
         if event.status != "published" or event.registration_deadline <= datetime.now(
-            UTC
+                UTC
         ):
             raise TicketError(409, "Registration is closed")
 
@@ -57,7 +59,13 @@ class TicketService:
             email=data.email,
             seat=data.seat,
         )
-        ticket = await self._tickets.add(ticket)
+        await self._tickets.add(ticket)
+        await self._outbox.add(
+            "ticket_created",
+            {"ticket_id": str(ticket.id), "event_name": event.name},
+        )
+        await self._session.commit()  # билет и outbox: либо оба, либо ни один
+
         logger.info("Билет создан, ticket_id=%s", ticket.id)
         return ticket
 

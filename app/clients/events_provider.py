@@ -29,7 +29,9 @@ class EventsProviderClient:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
-            raise ProviderError(f"Провайдер вернул {status}", status_code=status) from e
+            raise ProviderError(
+                f"Провайдер вернул {status}: {e.response.text}", status_code=status
+            ) from e
         except httpx.RequestError as e:
             raise ProviderError(f"Ошибка сети: {type(e).__name__}") from e
         return response.json()

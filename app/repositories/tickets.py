@@ -12,7 +12,7 @@ class TicketRepository:
 
     async def add(self, ticket: Ticket) -> Ticket:
         self._session.add(ticket)
-        await self._session.commit()
+        await self._session.flush()
         return ticket
 
     async def get(self, ticket_id: uuid.UUID) -> Ticket | None:
