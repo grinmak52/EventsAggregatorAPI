@@ -1,13 +1,13 @@
 import asyncio
 import contextlib
 import logging
-import sentry_sdk
 from contextlib import asynccontextmanager
 
-from sentry_sdk.integrations.fastapi import FastApiIntegration
+import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from app import api
 from app.clients.capashino import CapashinoClient
@@ -65,6 +65,7 @@ async def lifespan(app: FastAPI):
     await app.state.provider_client.close()
     await app.state.capashino_client.close()
     await engine.dispose()
+
 
 if settings.sentry_dsn:
     sentry_sdk.init(
